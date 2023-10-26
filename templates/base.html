@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Yoink - {% block title %}Home{% endblock %}</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Yoink</h1>
+        <nav>
+            <ul>
+                <li><a href="{{ url_for('home') }}">Home</a></li>
+                <li><a href="{{ url_for('login') }}">Login</a></li>
+                <li><a href="{{ url_for('register') }}">Register</a></li>
+            </ul>
+        </nav>
+    </header>
+    <div class="content">
+        {% if current_user.is_authenticated %}
+            {% block content_authenticated %}{% endblock %}
+        {% else %}
+            {% block content_welcome %}{% endblock %}
+        {% endif %}
+    </div>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>
