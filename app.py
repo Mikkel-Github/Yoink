@@ -5,6 +5,8 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.sql import exists
+from sqlalchemy.orm import joinedload
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -12,23 +14,38 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///yoink.db'
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 
-class User(UserMixin):
-    def __init__(self, user_id):
-        self.id = user_id
-
 @login_manager.user_loader
 def load_user(user_id):
     # Implement a function to get the user object based on user_id
     return User(user_id)
 
-class User(db.Model):
+followers = db.Table(
+    'followers',
+    db.Column('follower_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
+    db.Column('followed_id', db.Integer, db.ForeignKey('user.id'), primary_key=True)
+)
+
+class User(UserMixin, db.Model):
     __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(64), nullable=False)
     yoinks = db.relationship('Yoink', backref='author', lazy=True)
-    likes = db.relationship('Like', backref='user', lazy=True, uselist=False, cascade='all, delete-orphan')
+    likes = db.relationship('Like', backref='user', lazy=True)
+    profile_picture = db.Column(db.String(255))  # Example for a profile picture (store file path or URL)
+    bio = db.Column(db.String(250))  # Adjust the length as needed
+    # New fields for followers/following
+    followed = db.relationship(
+        'User',
+        secondary=followers,
+        primaryjoin=(followers.c.follower_id == id),
+        secondaryjoin=(followers.c.followed_id == id),
+        backref=db.backref('followers', lazy='dynamic'),
+        lazy='dynamic'
+    )
+    def is_following(self, user):
+        return self.followed.filter(followers.c.followed_id == user.get('id')).count() > 0
 
 class Yoink(db.Model):
     __tablename__ = 'yoink'
@@ -36,7 +53,7 @@ class Yoink(db.Model):
     content = db.Column(db.String(280), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     user = db.relationship('User', back_populates='yoinks')
-    likes = db.relationship('Like', backref='yoink')
+    likes = db.relationship('Like', backref='liked_yoink')
     comments = db.relationship('Comment', backref='yoink', lazy=True)
 
 class Comment(db.Model):
@@ -51,6 +68,9 @@ class Like(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     yoink_id = db.Column(db.Integer, db.ForeignKey('yoink.id'), nullable=False)
+
+    # Define the relationship with the Yoink model using a different backref name
+    yoink = db.relationship('Yoink', back_populates='likes')
 
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
@@ -67,51 +87,183 @@ class YoinkForm(FlaskForm):
     content = StringField('Your Yoink', validators=[DataRequired()])
     submit = SubmitField('Yoink It')
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def home():
     if current_user.is_authenticated:
         # User is logged in
         form = YoinkForm()
         if form.validate_on_submit():
             content = form.content.data
-            user_id = get_current_user_id()  # Implement a function to get the current user's ID
+            user_id = current_user.id  # Get the current user's ID from the authenticated User object
             create_yoink(content, user_id)  # Function to create a yoink
             flash('Yoink posted', 'success')
             return redirect(url_for('home'))
-        yoinks = get_yoinks()  # Implement a function to get yoinks
-        return render_template('home_authenticated.html', form=form, yoinks=yoinks)  # Render the authenticated home page
+        if request.method == 'GET':
+            yoinks, yoink_likes = get_yoinks()
+            return render_template('home_authenticated.html', form=form, yoinks=yoinks, yoink_is_liked_by_user=yoink_is_liked_by_user, yoink_likes=yoink_likes)  # Render the authenticated home page
     else:
         # User is not logged in
         return render_template('home_welcome.html')  # Render the welcome page for non-logged-in users
 
+# Define the create_user function
+def create_user(username, email, password):
+    # Logic to create a new user and add it to the database
+    new_user = User(username=username, email=email, password=password)
+    db.session.add(new_user)
+    db.session.commit()
+    login_user(new_user)  # Automatically log in the newly registered user
+    return new_user  # Return the new_user to allow logging in
+
+# Your route handling the registration
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     form = RegistrationForm()
     if form.validate_on_submit():
-        create_user(form.username.data, form.email.data, form.password.data)  # Function to create user
+        new_user = create_user(form.username.data, form.email.data, form.password.data)
         flash('Registration successful', 'success')
-        return redirect(url_for('login'))
+        # After creating the user and logging in, redirect to the home page or another route
+        return redirect(url_for('home'))
     return render_template('register.html', form=form)
+
+def authenticate_user(email, password):
+    # Check if the user with the provided email exists
+    user = User.query.filter_by(email=email).first()
+
+    if user and user.password == password:
+        # If the user exists and the password matches, return the user's ID
+        return user.id
+
+    # If the user doesn't exist or the password is incorrect, return None
+    return None
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
     if form.validate_on_submit():
-        # Handle user login and session management here
-        # Authenticate the user and obtain the user_id
-        user_id = authenticate_user()
-        user = User(user_id)  # Create a User object
-        login_user(user)
+        email = form.email.data
+        password = form.password.data
 
-        flash('Login successful', 'success')
-        return redirect(url_for('home'))
+        # Authenticate the user by their credentials, return user if successful
+        user = authenticate_user(email, password)
+
+        if user:
+            login_user(user)
+            flash('Login successful', 'success')
+            return redirect(url_for('home'))
+        else:
+            flash('Invalid email or password', 'error')
+
     return render_template('login.html', form=form)
 
-def create_user(username, email, password):
-    with app.app_context():
-        new_user = User(username=username, email=email, password=password)
-        db.session.add(new_user)
+# Logout route
+@app.route('/logout')
+def logout():
+    if current_user.is_authenticated:
+        logout_user()
+    return redirect(url_for('home'))  # Redirect to your home or any appropriate route after logging out
+
+@app.route('/like/<int:yoink_id>', methods=['POST'])
+def like(yoink_id):
+    if request.method == 'POST' and current_user.is_authenticated:
+        user_id = current_user.id
+
+        user = User.query.get(user_id)
+        yoink = Yoink.query.get(yoink_id)
+
+        if user and yoink:
+            like_exists = db.session.query(exists().where(
+                (Like.yoink_id == yoink.id) & (Like.user_id == user.id)
+            )).scalar()
+
+            if like_exists:
+                # If the user has already liked the yoink post, unlike it
+                Like.query.filter_by(yoink_id=yoink.id, user_id=user.id).delete()
+            else:
+                # If the user has not liked the yoink post, like it
+                like = Like(user_id=user.id, yoink_id=yoink.id)
+                db.session.add(like)
+
+            db.session.commit()
+
+    return redirect(url_for('home'))
+    
+@app.route('/comment/<int:yoink_id>', methods=['GET', 'POST'])
+def comment(yoink_id):
+    # Logic for handling comments on a specific yoink with ID 'yoink_id'
+    # You may perform actions such as fetching comments, adding comments, etc.
+    return redirect(url_for('home'))  # Redirect to home or an appropriate route after comment action
+
+@app.route('/add_comment/<int:yoink_id>', methods=['POST'])
+def add_comment(yoink_id):
+    if current_user.is_authenticated:
+        # Get the comment text from the form data
+        comment_text = request.form.get('comment_text')
+        
+        # Save the comment to the database for the corresponding yoink post
+        if comment_text:
+            new_comment = Comment(text=comment_text, user_id=current_user.id, yoink_id=yoink_id)
+            db.session.add(new_comment)
+            db.session.commit()
+
+    return redirect(url_for('home'))
+
+@app.route('/comments/<int:yoink_id>', methods=['GET'])
+def view_comments(yoink_id):
+    yoink = Yoink.query.get(yoink_id)
+    comments = Comment.query.filter_by(yoink_id=yoink_id).all()
+    return render_template('comments.html', yoink=yoink, comments=comments)
+
+@app.route('/profile/<int:user_id>')
+def profile(user_id):
+    if current_user.is_authenticated:
+        user = User.query.get(user_id)
+        
+        # Fetch the user's details
+        user_profile = {
+            'id': user.id,
+            'username': user.username,
+            'profile_picture': user.profile_picture,  # Assuming the user has a profile picture attribute
+            'bio': user.bio  # Assuming the user has a bio attribute
+        }
+        
+        # Fetch the user's yoinks
+        user_yoinks = Yoink.query.filter_by(user_id=user.id).all()
+        
+        # Fetch the user's comments on yoinks
+        user_comments = Comment.query.filter_by(user_id=user.id).all()
+        
+        # Fetch the yoinks liked by the user
+        liked_yoinks = []
+        likes = Like.query.filter_by(user_id=user.id).all()
+        for like in likes:
+            liked_yoinks.append(Yoink.query.get(like.yoink_id))
+        
+        return render_template('profile.html', user=user_profile, yoinks=user_yoinks, comments=user_comments, liked_yoinks=liked_yoinks)
+    else:
+        # Redirect to the login page if the user is not authenticated
+        return redirect(url_for('login'))
+
+@app.route('/follow/<int:followed_id>', methods=['POST'])
+@login_required  # This decorator ensures the user is logged in
+def follow_user(followed_id):
+    followed_user = User.query.get(followed_id)
+    if followed_user:
+        current_user.followed.append(followed_user)
         db.session.commit()
+    return redirect(url_for('profile', user_id=followed_id))  # Redirect to the user's profile
+
+@app.route('/unfollow/<int:followed_id>', methods=['POST'])
+@login_required  # This decorator ensures the user is logged in
+def unfollow_user(followed_id):
+    followed_user = User.query.get(followed_id)
+    if followed_user and followed_user in current_user.followed:
+        current_user.followed.remove(followed_user)
+        db.session.commit()
+    return redirect(url_for('profile', user_id=followed_id))  # Redirect to the user's profile
 
 # Function to create a yoink and add it to the database
 def create_yoink(content, user_id):
@@ -123,9 +275,37 @@ def create_yoink(content, user_id):
 # Function to get yoinks from the database
 def get_yoinks():
     with app.app_context():
-        return Yoink.query.all()
+        # Fetching Yoinks with related User information eagerly loaded
+        yoinks = db.session.query(Yoink).options(joinedload(Yoink.user)).all()
+        yoink_likes = {yoink.id: len(yoink.likes) for yoink in yoinks}
+        return yoinks, yoink_likes
+
+def yoink_is_liked_by_user(yoink_id):
+    # This function should check if the current user has liked the yoink with the given ID
+    # You'll need to implement the query based on your database model and the relationship between users and liked yoinks
+    with app.app_context():
+        # For example, assuming you have a current_user variable accessible
+        liked_yoink = Like.query.filter_by(user_id=current_user.id, yoink_id=yoink_id).first()
+        return liked_yoink is not None
+
+# Follow a user
+def follow_user(user_id, followed_id):
+    user = User.query.filter_by(id=user_id).first()
+    followed = User.query.filter_by(id=followed_id).first()
+    if user and followed:
+        user.followed.append(followed)
+        db.session.commit()
+
+# Unfollow a user
+def unfollow_user(user_id, followed_id):
+    user = User.query.filter_by(id=user_id).first()
+    followed = User.query.filter_by(id=followed_id).first()
+    if user and followed:
+        user.followed.remove(followed)
+        db.session.commit()
 
 if __name__ == '__main__':
     with app.app_context():
+        #db.drop_all()
         db.create_all()
     app.run(debug=True)

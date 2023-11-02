@@ -36,8 +36,15 @@ nav ul li {
 
 nav a {
     text-decoration: none;
-    color: #007acc;
+    color: #fff;
     font-weight: bold;
+    background-color: #007acc;
+    padding: 8px 15px;
+    border-radius: 4px;
+}
+
+nav a:hover {
+    background-color: #005e80;
 }
 
 /* Style the main content area */
