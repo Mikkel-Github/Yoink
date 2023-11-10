@@ -89,21 +89,25 @@ class YoinkForm(FlaskForm):
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
+    hide_header = True  # Set hide_header to True for the welcome page
+
     if current_user.is_authenticated:
         # User is logged in
         form = YoinkForm()
         if form.validate_on_submit():
             content = form.content.data
-            user_id = current_user.id  # Get the current user's ID from the authenticated User object
-            create_yoink(content, user_id)  # Function to create a yoink
+            user_id = current_user.id
+            create_yoink(content, user_id)
             flash('Yoink posted', 'success')
             return redirect(url_for('home'))
+
         if request.method == 'GET':
             yoinks, yoink_likes = get_yoinks()
-            return render_template('home_authenticated.html', form=form, yoinks=yoinks, yoink_is_liked_by_user=yoink_is_liked_by_user, yoink_likes=yoink_likes)  # Render the authenticated home page
-    else:
-        # User is not logged in
-        return render_template('home_welcome.html')  # Render the welcome page for non-logged-in users
+            hide_header = False  # Set hide_header to False for the authenticated home page
+            return render_template('home_authenticated.html', form=form, yoinks=yoinks, yoink_is_liked_by_user=yoink_is_liked_by_user, yoink_likes=yoink_likes, hide_header=hide_header)
+
+    # User is not logged in
+    return render_template('home_welcome.html', hide_header=hide_header)
 
 # Define the create_user function
 def create_user(username, email, password):
@@ -123,7 +127,7 @@ def register():
         flash('Registration successful', 'success')
         # After creating the user and logging in, redirect to the home page or another route
         return redirect(url_for('home'))
-    return render_template('register.html', form=form)
+    return render_template('register.html', form=form, hide_header=True)
 
 def authenticate_user(email, password):
     # Check if the user with the provided email exists
@@ -131,7 +135,7 @@ def authenticate_user(email, password):
 
     if user and user.password == password:
         # If the user exists and the password matches, return the user's ID
-        return user.id
+        return user
 
     # If the user doesn't exist or the password is incorrect, return None
     return None

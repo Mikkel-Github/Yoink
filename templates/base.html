@@ -5,6 +5,7 @@
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
+    {% if not hide_header %}
     <header>
         <h1>Yoink</h1>
         <nav>
@@ -24,15 +25,12 @@
             </ul>
         </nav>
     </header>
-    <div class="content">
-        {% if current_user.is_authenticated %}
-            {% block content_authenticated %}{% endblock %}
-        {% else %}
-            {% block content_welcome %}{% endblock %}
-        {% endif %}
-    </div>
-    <main>
+    {% endif %}
+    {% if current_user.is_authenticated %}
+        {% block content_authenticated %}{% endblock %}
+    {% else %}
+        {% block content_welcome %}{% endblock %}
         {% block content %}{% endblock %}
-    </main>
+    {% endif %}
 </body>
 </html>
