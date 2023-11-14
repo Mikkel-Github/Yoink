@@ -89,7 +89,7 @@ class YoinkForm(FlaskForm):
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
-    hide_header = True  # Set hide_header to True for the welcome page
+    hide_navigation  = True  # Set hide_navigation  to True for the welcome page
 
     if current_user.is_authenticated:
         # User is logged in
@@ -103,11 +103,11 @@ def home():
 
         if request.method == 'GET':
             yoinks, yoink_likes = get_yoinks()
-            hide_header = False  # Set hide_header to False for the authenticated home page
-            return render_template('home_authenticated.html', form=form, yoinks=yoinks, yoink_is_liked_by_user=yoink_is_liked_by_user, yoink_likes=yoink_likes, hide_header=hide_header)
+            hide_navigation = False  # Set hide_navigation  to False for the authenticated home page
+            return render_template('home_authenticated.html', form=form, yoinks=yoinks, yoink_is_liked_by_user=yoink_is_liked_by_user, yoink_likes=yoink_likes, hide_navigation=hide_navigation )
 
     # User is not logged in
-    return render_template('home_welcome.html', hide_header=hide_header)
+    return render_template('home_welcome.html', hide_navigation =hide_navigation )
 
 # Define the create_user function
 def create_user(username, email, password):
@@ -127,7 +127,7 @@ def register():
         flash('Registration successful', 'success')
         # After creating the user and logging in, redirect to the home page or another route
         return redirect(url_for('home'))
-    return render_template('register.html', form=form, hide_header=True)
+    return render_template('register.html', form=form, hide_navigation =True)
 
 def authenticate_user(email, password):
     # Check if the user with the provided email exists
@@ -161,7 +161,7 @@ def login():
         else:
             flash('Invalid email or password', 'error')
 
-    return render_template('login.html', form=form)
+    return render_template('login.html', form=form, hide_navigation =True)
 
 # Logout route
 @app.route('/logout')

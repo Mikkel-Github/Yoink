@@ -1,39 +1,38 @@
 {% extends "base.html" %}
 {% block title %}Register{% endblock %}
-{% block content %}
+{% block content_welcome %}
+    <div class="page-header">
+        <h1>Create your account</h1>
+    </div>
     <form method="POST">
         {{ form.hidden_tag() }}
 
         <div class="sign-up">
             <div class="div">
                 <div class="input-field">
-                    <label for="username" class="label">Username</label>
                     <div class="overlap-group">
-                        {{ form.username(class="text-wrapper", placeholder="Enter your username") }}
+                        {{ form.username(class="text-wrapper", placeholder="Username") }}
                     </div>
                 </div>
-
+        
                 <div class="input-field">
-                    <label for="email" class="label">Email</label>
                     <div class="overlap-group">
-                        {{ form.email(class="text-wrapper", placeholder="Enter your email") }}
+                        {{ form.email(class="text-wrapper", placeholder="Email") }}
                     </div>
                 </div>
-
+        
                 <div class="input-field">
-                    <label for="password" class="label">Password</label>
                     <div class="overlap-group">
-                        {{ form.password(class="text-wrapper", placeholder="Enter your password") }}
+                        {{ form.password(class="text-wrapper", placeholder="Password") }}
                     </div>
                 </div>
-
+        
                 <div class="input-field">
-                    <label for="repeat-password" class="label">Repeat Password</label>
                     <div class="overlap-group">
-                        {{ form.password(class="text-wrapper", placeholder="Repeat your password") }}
+                        {{ form.password(class="text-wrapper", placeholder="Repeat Password") }}
                     </div>
                 </div>
-
+        
                 <button type="submit" class="sign-up-button">
                     <div class="overlap-group">
                         <div class="text-wrapper">Create Account</div>

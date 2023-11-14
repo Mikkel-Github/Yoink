@@ -2,38 +2,41 @@
 {% block title %}Home{% endblock %}
 
 {% block content_authenticated %}
-    <h2>Welcome to Yoink</h2>
-    <form method="POST">
+    <div class="content-container">
+        <h3>Recent Yoinks</h3>
+        <ul class="yoink-list">
+            {% for yoink in yoinks %}
+                <li class="yoink-item">
+                    {{ yoink.content }}
+                    <!-- Display user's profile picture and name -->
+                    <a href="{{ url_for('profile', user_id=yoink.user.id) }}">
+                        <img src="{{ yoink.user.profile_picture }}" alt="Profile Picture">
+                        {{ yoink.user.username }}
+                    </a>
+                    <form action="{{ url_for('like', yoink_id=yoink.id) }}" method="POST">
+                        {% if not yoink_is_liked_by_user(yoink.id) %}
+                            <button type="submit">Like</button>
+                        {% else %}
+                            <button type="submit">Unlike</button>
+                        {% endif %}
+                    </form>
+                    <form action="{{ url_for('add_comment', yoink_id=yoink.id) }}" method="POST">
+                        <input type="text" name="comment_text" placeholder="Add a comment">
+                        <button type="submit">Submit</button>
+                    </form>
+                    <a href="{{ url_for('view_comments', yoink_id=yoink.id) }}">View Comments</a>
+                    <!-- Display the number of likes -->
+                    <span>Likes: {{ yoink_likes.get(yoink.id, 0) }}</span>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <form method="POST" class="yoink-form">
         {{ form.hidden_tag() }}
-        {{ form.content.label(class="form-label") }}
-        {{ form.content(class="form-control") }}
+        <!-- Display user's profile picture -->
+        <img src="{{ current_user.profile_picture }}" alt="Profile Picture">
+        {{ form.content(class="form-control", placeholder="What are you yoinking about?") }}
         {{ form.submit(class="btn btn-primary") }}
     </form>
-    <h3>Recent Yoinks</h3>
-    <ul class="yoink-list">
-        {% for yoink in yoinks %}
-            <li class="yoink-item">
-                {{ yoink.content }}
-                <!-- Display user's profile picture and name -->
-                <a href="{{ url_for('profile', user_id=yoink.user.id) }}">
-                    <img src="{{ yoink.user.profile_picture }}" alt="Profile Picture">
-                    {{ yoink.user.username }}
-                </a>
-                <form action="{{ url_for('like', yoink_id=yoink.id) }}" method="POST">
-                    {% if not yoink_is_liked_by_user(yoink.id) %}
-                        <button type="submit">Like</button>
-                    {% else %}
-                        <button type="submit">Unlike</button>
-                    {% endif %}
-                </form>
-                <form action="{{ url_for('add_comment', yoink_id=yoink.id) }}" method="POST">
-                    <input type="text" name="comment_text" placeholder="Add a comment">
-                    <button type="submit">Submit</button>
-                </form>
-                <a href="{{ url_for('view_comments', yoink_id=yoink.id) }}">View Comments</a>
-                <!-- Display the number of likes -->
-                <span>Likes: {{ yoink_likes.get(yoink.id, 0) }}</span>
-            </li>
-        {% endfor %}
-    </ul>
 {% endblock %}

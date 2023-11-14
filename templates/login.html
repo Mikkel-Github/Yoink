@@ -1,13 +1,32 @@
 {% extends "base.html" %}
 {% block title %}Login{% endblock %}
-{% block content %}
-    <h2>Login</h2>
+{% block content_welcome %}
+    <div class="page-header">
+        <h1>Login</h1>
+    </div>
     <form method="POST">
         {{ form.hidden_tag() }}
-        <label for="email">Email</label>
-        {{ form.email() }}
-        <label for="password">Password</label>
-        {{ form.password() }}
-        {{ form.submit() }}
+
+        <div class="sign-up">
+            <div class="div">
+                <div class="input-field">
+                    <div class="overlap-group">
+                        {{ form.email(class="text-wrapper", placeholder="Email") }}
+                    </div>
+                </div>
+
+                <div class="input-field">
+                    <div class="overlap-group">
+                        {{ form.password(class="text-wrapper", placeholder="Password") }}
+                    </div>
+                </div>
+
+                <button type="submit" class="sign-up-button">
+                    <div class="overlap-group">
+                        <div class="text-wrapper">Login</div>
+                    </div>
+                </button>
+            </div>
+        </div>
     </form>
 {% endblock %}
