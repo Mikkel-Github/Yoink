@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import jsonify, Flask, render_template, request, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
@@ -7,6 +7,8 @@ from wtforms.validators import DataRequired
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.sql import exists
 from sqlalchemy.orm import joinedload
+from wtforms.validators import ValidationError
+
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -76,6 +78,12 @@ class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
     email = StringField('Email', validators=[DataRequired()])
     password = PasswordField('Password', validators=[DataRequired()])
+    repeat_password = PasswordField('Repeat Password', validators=[DataRequired()])
+
+    def validate_repeat_password(self, field):
+        if self.password.data != field.data:
+            raise ValidationError('Passwords must match.')
+
     submit = SubmitField('Register')
 
 class LoginForm(FlaskForm):
@@ -121,13 +129,21 @@ def create_user(username, email, password):
 # Your route handling the registration
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    if request.method == 'POST':
+        form = RegistrationForm()
+
+        if form.validate_on_submit():
+            new_user = create_user(form.username.data, form.email.data, form.password.data)
+            flash('Account created successfully', 'success')
+            return jsonify({'success': True, 'message': 'Account created successfully'})
+
+        errors = {field.name: field.errors for field in form if field.errors}
+        return jsonify({'success': False, 'errors': errors})
+
+    # Handle the GET request (render the registration form)
     form = RegistrationForm()
-    if form.validate_on_submit():
-        new_user = create_user(form.username.data, form.email.data, form.password.data)
-        flash('Registration successful', 'success')
-        # After creating the user and logging in, redirect to the home page or another route
-        return redirect(url_for('home'))
-    return render_template('register.html', form=form, hide_navigation =True)
+    return render_template('register.html', form=form, hide_navigation=True)
+
 
 def authenticate_user(email, password):
     # Check if the user with the provided email exists
