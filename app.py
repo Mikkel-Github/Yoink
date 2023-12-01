@@ -2,7 +2,7 @@ from flask import jsonify, Flask, render_template, request, redirect, url_for, f
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from wtforms import StringField, PasswordField, SubmitField
+from wtforms import StringField, PasswordField, SubmitField, TextAreaField
 from wtforms.validators import DataRequired
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.sql import exists
@@ -92,7 +92,7 @@ class LoginForm(FlaskForm):
     submit = SubmitField('Login')
 
 class YoinkForm(FlaskForm):
-    content = StringField('Your Yoink', validators=[DataRequired()])
+    content = TextAreaField('Your Yoink', validators=[DataRequired()])
     submit = SubmitField('Yoink It')
 
 @app.route('/', methods=['GET', 'POST'])
@@ -160,7 +160,12 @@ def authenticate_user(email, password):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-@app.route('/login', methods=['GET', 'POST'])
+@app.route('/login', methods=['GET'])
+def show_login():
+    form = LoginForm()
+    return render_template('login.html', form=form, hide_navigation=True)
+
+@app.route('/login', methods=['POST'])
 def login():
     form = LoginForm()
     if form.validate_on_submit():
@@ -173,11 +178,14 @@ def login():
         if user:
             login_user(user)
             flash('Login successful', 'success')
-            return redirect(url_for('home'))
+            return jsonify({'success': True, 'message': 'Login successful'})
         else:
             flash('Invalid email or password', 'error')
+            return jsonify({'success': False, 'message': 'Invalid email or password'})
 
-    return render_template('login.html', form=form, hide_navigation =True)
+    # Return an error response if the form is not valid
+    return jsonify({'success': False, 'message': 'Invalid form submission'})
+
 
 # Logout route
 @app.route('/logout')
@@ -186,7 +194,7 @@ def logout():
         logout_user()
     return redirect(url_for('home'))  # Redirect to your home or any appropriate route after logging out
 
-@app.route('/like/<int:yoink_id>', methods=['POST'])
+@app.route('/like/<int:yoink_id>', methods=['POST', 'DELETE'])
 def like(yoink_id):
     if request.method == 'POST' and current_user.is_authenticated:
         user_id = current_user.id
@@ -208,6 +216,34 @@ def like(yoink_id):
                 db.session.add(like)
 
             db.session.commit()
+
+            # Get the updated like count
+            updated_like_count = Like.query.filter_by(yoink_id=yoink.id).count()
+
+            # Respond with JSON containing the updated like count
+            return jsonify({'likes': updated_like_count})
+
+    elif request.method == 'DELETE' and current_user.is_authenticated:
+        # Handle the case when the user wants to "unlike" the post
+        user_id = current_user.id
+        yoink = Yoink.query.get(yoink_id)
+
+        if user_id and yoink:
+            like_exists = db.session.query(exists().where(
+                (Like.yoink_id == yoink.id) & (Like.user_id == user_id)
+            )).scalar()
+
+            if like_exists:
+                # If the user has already liked the yoink post, unlike it
+                Like.query.filter_by(yoink_id=yoink.id, user_id=user_id).delete()
+                db.session.commit()
+
+                # Get the updated like count
+                updated_like_count = Like.query.filter_by(yoink_id=yoink.id).count()
+
+                # Respond with JSON containing the updated like count
+                return jsonify({'likes': updated_like_count})
+
 
     return redirect(url_for('home'))
     

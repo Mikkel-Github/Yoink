@@ -25,6 +25,8 @@
                     <div class="overlap-group">
                         {{ form.password(class="text-wrapper", placeholder="Password") }}
                     </div>
+                    <!-- Error message for the password field -->
+                    <span id="password-error" class="error-message"></span>
                 </div>
         
                 <div class="input-field">
@@ -60,10 +62,14 @@
     
             // Check if passwords match
             if (password !== repeatPassword) {
-                alert('Passwords must match.');
+                // Display error message for passwords not matching
+                document.getElementById('password-error').innerText = 'Passwords must match.';
                 return;
             }
-    
+
+            // Clear the error message if passwords match
+            document.getElementById('password-error').innerText = '';
+
             // Submit the form via AJAX
             var xhr = new XMLHttpRequest();
             xhr.open('POST', "{{ url_for('register') }}", true);

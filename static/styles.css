@@ -331,54 +331,73 @@ html, body {
     margin: 0 auto; /* Center the container horizontally */
 }
 
+/* Style for the home page */
+.yoink-list-container {
+    margin-bottom: 20px; /* Adjust the margin to create less space */
+    max-height: calc(100vh - 85px); /* Adjust based on form's bottom margin and height */
+    overflow-y: auto; /* Enable vertical scrolling if content exceeds the container height */
+    scrollbar-width: thin; /* Hide the scrollbar in Firefox */
+}
+
+/* Style for Webkit browsers (Chrome, Safari) */
+.yoink-list-container::-webkit-scrollbar {
+    width: 0; /* Hide the scrollbar in Webkit browsers */
+}
+
 .yoink-list {
     list-style: none;
     padding: 0;
+    margin: 0;
 }
 
 .yoink-item {
-    margin-bottom: 20px;
-    /* Add other styles for yoink item as needed */
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: #fff;
 }
 
-/* Add these styles to your styles.css file */
-
+/* Style for the yoink form */
 .yoink-form {
-    background-color: #333; /* Dark grey background for the form */
-    padding: 20px;
-    margin-top: 20px;
-    width: 100%; /* Take full width of the container */
-    box-sizing: border-box; /* Include padding and border in the width */
+    position: fixed;
+    bottom: 25px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100vw / 3); /* 1/3 of the page width */
+    padding: 10px;
+    background-color: #333;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    z-index: 1; /* Ensure the form is on top */
     display: flex;
-    flex-direction: row;
     align-items: center;
     justify-content: space-between;
 }
 
 .yoink-form img {
-    width: 50px; /* Set the width of the profile picture */
-    height: 50px; /* Set the height of the profile picture */
-    border-radius: 50%; /* Make it circular */
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
     margin-right: 10px;
 }
 
+.yoink-form input,
+.yoink-form button {
+    margin: 5px;
+}
+
 .yoink-form .input-column {
-    flex-grow: 1; /* Take remaining space in the row */
+    flex-grow: 1;
     display: flex;
     flex-direction: column;
-    margin-right: 10px; /* Add some space between columns */
+    margin-right: 10px;
 }
 
 .yoink-form .form-label {
-    color: white; /* Text color for the form label */
+    color: white;
     margin-bottom: 10px;
 }
 
-.yoink-form {
-    /* Add other styles for form control as needed */
-}
-
-.form-control {
+.yoink-form .form-control {
     width: 100%;
     padding: 10px;
     margin: 5px 0;
@@ -387,16 +406,14 @@ html, body {
     border-radius: 4px;
     resize: vertical;
     background-color: transparent;
-    color: white; /* Set text color to white */
-    font-size: 18px; /* Set font size to 18px */
-    overflow-wrap: break-word; /* Allow long words to be broken and wrap to the next line */
-    word-wrap: break-word; /* For older browser compatibility */
+    color: white;
+    font-size: 16px; /* Set the font size to 16px */
+    overflow-wrap: break-word;
+    word-wrap: break-word;
 }
 
-
 .yoink-form .btn-primary {
-    /* Add styles for the Yoink button */
-    background-color: #4CAF50; /* Green color */
+    background-color: #4CAF50;
     color: white;
     border: none;
     padding: 10px 20px;
